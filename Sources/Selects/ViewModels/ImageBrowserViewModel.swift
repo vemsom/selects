@@ -5,6 +5,13 @@ final class ImageBrowserViewModel {
     private(set) var images: [ImageItem] = []
     private(set) var currentIndex: Int = 0
     private(set) var currentFolder: URL?
+    private(set) var canUndo = false
+
+    private struct UndoEntry {
+        let item: ImageItem
+        let index: Int
+    }
+    private var undoStack: [UndoEntry] = []
 
     var currentImage: ImageItem? {
         guard images.indices.contains(currentIndex) else { return nil }
@@ -23,6 +30,10 @@ final class ImageBrowserViewModel {
 
     func loadFolder(_ url: URL) {
         currentFolder = url
+        UserDefaults.standard.set(url.path, forKey: "lastFolderPath")
+        undoStack.removeAll()
+        canUndo = false
+
         guard let contents = try? FileManager.default.contentsOfDirectory(
             at: url,
             includingPropertiesForKeys: nil,
@@ -40,6 +51,14 @@ final class ImageBrowserViewModel {
         currentIndex = 0
     }
 
+    func restoreLastFolder() {
+        guard UserDefaults.standard.object(forKey: "restoreLastFolder") as? Bool ?? true else { return }
+        guard let path = UserDefaults.standard.string(forKey: "lastFolderPath") else { return }
+        let url = URL(filePath: path)
+        guard FileManager.default.fileExists(atPath: path) else { return }
+        loadFolder(url)
+    }
+
     func nextImage() {
         guard currentIndex < images.count - 1 else { return }
         currentIndex += 1
@@ -52,15 +71,44 @@ final class ImageBrowserViewModel {
 
     func deleteCurrent() {
         guard let item = currentImage else { return }
+
+        if UserDefaults.standard.bool(forKey: "confirmDelete") {
+            let alert = NSAlert()
+            alert.messageText = "Ta bort bild?"
+            alert.informativeText = "\(item.displayName)"
+            alert.addButton(withTitle: "Ta bort")
+            alert.addButton(withTitle: "Avbryt")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+
         do {
             try FileOperations.trashFiles(at: item.urls)
         } catch {
             print("Failed to trash files: \(error)")
+            return
         }
+        undoStack.append(UndoEntry(item: item, index: currentIndex))
         images.remove(at: currentIndex)
         if currentIndex >= images.count {
             currentIndex = max(0, images.count - 1)
         }
+        canUndo = true
+    }
+
+    func undoDelete() {
+        guard let entry = undoStack.popLast() else { return }
+
+        for url in entry.item.urls {
+            let dest = url
+            let trashURL = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".Trash")
+                .appendingPathComponent(url.lastPathComponent)
+            try? FileManager.default.moveItem(at: trashURL, to: dest)
+        }
+
+        images.insert(entry.item, at: entry.index)
+        currentIndex = entry.index
+        canUndo = !undoStack.isEmpty
     }
 
     func rateCurrent(_ rating: Int) {
@@ -74,6 +122,17 @@ final class ImageBrowserViewModel {
         currentIndex = index
     }
 
+    func openInEditor() {
+        guard let url = currentImage?.primaryURL else { return }
+        let editorPath = UserDefaults.standard.string(forKey: "editorAppPath")
+        if let editorPath {
+            let appURL = URL(fileURLWithPath: editorPath)
+            NSWorkspace.shared.open([url], withApplicationAt: appURL, configuration: NSWorkspace.OpenConfiguration())
+        } else {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     func handleKeyEvent(_ event: NSEvent) -> Bool {
         switch event.keyCode {
         case 123: previousImage(); return true
@@ -82,6 +141,7 @@ final class ImageBrowserViewModel {
         case 49: toggleFullscreen(); return true
         default:
             guard let chars = event.charactersIgnoringModifiers else { return false }
+
             switch chars {
             case "0": rateCurrent(0); return true
             case "1": rateCurrent(1); return true

@@ -6,6 +6,9 @@ struct ImageItem: Identifiable, Equatable {
     var rating: Int = 0
 
     var primaryURL: URL { urls[0] }
+    var rawURL: URL? {
+        urls.first { imageExtensions.raw.contains($0.pathExtension.lowercased()) }
+    }
     var displayName: String { primaryURL.lastPathComponent }
     var baseName: String { primaryURL.deletingPathExtension().lastPathComponent }
 

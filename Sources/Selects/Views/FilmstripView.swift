@@ -4,9 +4,10 @@ struct FilmstripView: View {
     @Environment(ImageBrowserViewModel.self) private var viewModel
     @State private var thumbnails: [URL: NSImage] = [:]
     @State private var scrollPosition: Int?
+    @AppStorage("filmstripSize") private var filmstripSize = 100.0
 
-    private let thumbnailWidth: CGFloat = 100
-    private let thumbnailHeight: CGFloat = 75
+    private var thumbnailWidth: CGFloat { filmstripSize }
+    private var thumbnailHeight: CGFloat { filmstripSize * 0.75 }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -42,6 +43,7 @@ struct FilmstripView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
             }
+            .frame(height: filmstripSize * 0.75 + 24)
             .onChange(of: viewModel.currentIndex) { _, newIndex in
                 withAnimation {
                     proxy.scrollTo(viewModel.images[newIndex].id, anchor: .center)

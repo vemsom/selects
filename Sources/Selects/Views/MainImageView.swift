@@ -2,12 +2,21 @@ import SwiftUI
 
 struct MainImageView: View {
     @Environment(ImageBrowserViewModel.self) private var viewModel
+    @AppStorage("backgroundStyle") private var backgroundStyle = 0
     @State private var nsImage: NSImage?
+
+    private var bgColor: Color {
+        switch backgroundStyle {
+        case 1: return .black
+        case 2: return Color(.darkGray)
+        case 3: return .white
+        default: return Color(.windowBackgroundColor)
+        }
+    }
 
     var body: some View {
         ZStack {
-            Color(.windowBackgroundColor)
-                .ignoresSafeArea()
+            bgColor
 
             if let nsImage = nsImage {
                 Image(nsImage: nsImage)
@@ -22,7 +31,6 @@ struct MainImageView: View {
                 )
             }
 
-            // Rating overlay top-left
             if let item = viewModel.currentImage, item.rating > 0 {
                 VStack {
                     HStack {
@@ -36,31 +44,16 @@ struct MainImageView: View {
                     Spacer()
                 }
             }
-
-            // Info overlay bottom
-            if let item = viewModel.currentImage {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Text(item.displayName)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        if item.isRAW {
-                            Text("RAW")
-                                .font(.caption2)
-                                .foregroundColor(.orange)
-                        }
-                        Spacer()
-                        Text("\(viewModel.currentIndex + 1) / \(viewModel.images.count)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(8)
-                    .background(.ultraThinMaterial)
-                    .padding()
+        }
+        .background(
+            ScrollWheelCapture { delta in
+                if delta < 0 {
+                    viewModel.previousImage()
+                } else {
+                    viewModel.nextImage()
                 }
             }
-        }
+        )
         .onChange(of: viewModel.currentImage?.id) { _, _ in
             loadImage()
         }
