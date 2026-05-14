@@ -2,9 +2,9 @@
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_NAME="ImageCuller"
+APP_NAME="Selects"
 BUILD_DIR="$PROJECT_DIR/.build/app"
-INSTALL_DIR="/Applications"
+INSTALL_DIR="${HOME}/Applications"
 
 swift build --configuration release
 
@@ -42,6 +42,7 @@ cat > "$BUILD_DIR/$APP_NAME.app/Contents/Info.plist" <<EOF
 </plist>
 EOF
 
-osascript -e "do shell script \"rm -rf '$INSTALL_DIR/$APP_NAME.app' && cp -R '$BUILD_DIR/$APP_NAME.app' '$INSTALL_DIR/'\" with administrator privileges"
+rm -rf "$INSTALL_DIR/$APP_NAME.app"
+cp -R "$BUILD_DIR/$APP_NAME.app" "$INSTALL_DIR/"
 
 open "$INSTALL_DIR/$APP_NAME.app"

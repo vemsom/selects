@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "ImageCuller",
+    name: "Selects",
     platforms: [
         .macOS(.v14)
     ],
     targets: [
         .executableTarget(
-            name: "ImageCuller"
+            name: "Selects"
         )
     ]
 )
