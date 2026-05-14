@@ -1,4 +1,5 @@
 .build/
 *.icns
 *.iconset
+*.zip
 .DS_Store
